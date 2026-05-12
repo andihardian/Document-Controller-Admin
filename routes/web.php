@@ -11,7 +11,8 @@ use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 // ─── Public ───────────────────────────────────────────────
-Route::get('/', fn() => redirect()->route('dashboard'));
+// Landing page
+Route::get('/', fn() => view('welcome'))->name('home');
 
 // ─── Authenticated ────────────────────────────────────────
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -24,13 +25,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // ─── Documents (semua role bisa akses) ────────────────
+    // ─── Documents ────────────────────────────────────────
     Route::resource('documents', DocumentController::class)->except(['destroy']);
     Route::get('documents/{document}/download/{version?}', [DocumentController::class, 'download'])->name('documents.download');
     Route::post('documents/{document}/submit', [DocumentController::class, 'submit'])->name('documents.submit');
     Route::post('documents/{document}/revise', [DocumentController::class, 'revise'])->name('documents.revise');
 
-    // ─── Approvals (department_head & admin) ──────────────
+    // ─── Approvals ────────────────────────────────────────
     Route::middleware('role:admin|department_head')->group(function () {
         Route::get('/approvals', [ApprovalController::class, 'index'])->name('approvals.index');
         Route::get('/approvals/{documentVersion}', [ApprovalController::class, 'show'])->name('approvals.show');
@@ -40,22 +41,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // ─── Admin only ───────────────────────────────────────
     Route::middleware('role:admin')->group(function () {
-
-        // User management
         Route::resource('users', UserController::class);
         Route::patch('users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
         Route::patch('users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');
 
-        // Department management
         Route::resource('departments', DepartmentController::class);
-
-        // Document category management
         Route::resource('categories', DocumentCategoryController::class);
 
-        // Audit log
         Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
 
-        // Restore dokumen yang di-soft delete
         Route::patch('documents/{id}/restore', [DocumentController::class, 'restore'])->name('documents.restore');
         Route::delete('documents/{document}/force-delete', [DocumentController::class, 'forceDelete'])->name('documents.force-delete');
     });
