@@ -348,7 +348,7 @@
     <div class="reveal" style="max-width:560px;margin:0 auto;text-align:center;position:relative;z-index:1;">
         <h2 class="font-display" style="font-size:36px;font-weight:700;color:white;margin:0 0 12px;">Siap Mulai?</h2>
         <p style="font-size:15px;color:#94a3b8;margin:0 0 32px;">Masuk ke sistem dan mulai kelola dokumen perusahaan Anda hari ini.</p>
-        <a href="{{ route('login') }}" class="btn-primary">Masuk ke Sistem →</a>
+        <a href="{{ route('login') }}" class="btn-primary">Masuk ke Sistem </a>
     </div>
 </section>
 
