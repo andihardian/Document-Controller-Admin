@@ -184,24 +184,7 @@
     <div class="dots-grid" style="position:absolute;inset:0;opacity:0.45;"></div>
 
     {{-- Floating cards --}}
-    <div class="float-1" style="position:absolute;top:120px;right:80px;display:none;" id="fc1">
-        <div style="background:white;border:1px solid #f1f5f9;border-radius:18px;padding:16px;width:210px;box-shadow:0 12px 40px rgba(0,0,0,0.08);">
-            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
-                <div style="width:8px;height:8px;background:#22c55e;border-radius:50%;"></div>
-                <span style="font-size:11px;color:#64748b;font-weight:500;">SOP-HR-001 Approved</span>
-            </div>
-            <p style="font-size:11px;color:#94a3b8;margin:0;">Disetujui Dept. Head · 2 menit lalu</p>
-            <div style="margin-top:8px;height:4px;background:#dcfce7;border-radius:99px;"><div style="width:100%;height:100%;background:#22c55e;border-radius:99px;"></div></div>
-        </div>
-    </div>
 
-    <div class="float-2" style="position:absolute;bottom:100px;right:60px;display:none;" id="fc2">
-        <div style="background:white;border:1px solid #f1f5f9;border-radius:18px;padding:16px;width:180px;box-shadow:0 12px 40px rgba(0,0,0,0.08);">
-            <p style="font-size:11px;color:#94a3b8;margin:0 0 4px;">Total Dokumen</p>
-            <p style="font-size:28px;font-weight:700;color:#0f172a;margin:0;">248</p>
-            <p style="font-size:11px;color:#0ea5e9;font-weight:500;margin:4px 0 0;">↑ 12 dokumen baru</p>
-        </div>
-    </div>
 
     {{-- Content --}}
     <div style="max-width:700px;margin:0 auto;text-align:center;position:relative;z-index:2;">
@@ -367,10 +350,6 @@
 
 <script>
 // Show floating cards on large screens
-if (window.innerWidth >= 1024) {
-    document.getElementById('fc1').style.display = 'block';
-    document.getElementById('fc2').style.display = 'block';
-}
 
 // Scroll reveal
 const observer = new IntersectionObserver((entries) => {
