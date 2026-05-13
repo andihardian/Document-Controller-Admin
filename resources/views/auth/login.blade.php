@@ -318,7 +318,7 @@
                     </svg>
                     <input id="email" type="email" name="email" value="{{ old('email') }}"
                            required autofocus autocomplete="email"
-                           class="input-field" placeholder="nama@perusahaan.com">
+                           class="input-field" placeholder="Masukkan Email">
                 </div>
             </div>
 
@@ -338,7 +338,7 @@
                     </svg>
                     <input id="password" type="password" name="password"
                            required autocomplete="current-password"
-                           class="input-field" placeholder="••••••••" id="pw-input">
+                           class="input-field" placeholder="Masukkan Password" id="pw-input">
                     <button type="button" class="toggle-pw" onclick="togglePw()" aria-label="Toggle password">
                         <svg id="eye-icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
