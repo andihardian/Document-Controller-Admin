@@ -9,13 +9,15 @@ use App\Models\Document;
 use App\Models\DocumentVersion;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use OpenAI\Laravel\Facades\OpenAI;
 
 class AIService
 {
     private string $chatModel;
     private int    $maxTokens;
+    private string $groqApiKey;
+    private string $groqEndpoint = 'https://api.groq.com/openai/v1/chat/completions';
 
     private const SYSTEM_PROMPT = <<<'PROMPT'
 Anda adalah AI Assistant untuk sistem document control perusahaan.
@@ -38,8 +40,9 @@ PROMPT;
     public function __construct(
         private readonly RAGService $ragService,
     ) {
-        $this->chatModel = config('ai.chat_model', 'gpt-4o-mini');
-        $this->maxTokens = (int) config('ai.max_tokens', 1500);
+        $this->chatModel  = config('ai.chat_model', 'llama-3.1-8b-instant');
+        $this->maxTokens  = (int) config('ai.max_tokens', 1500);
+        $this->groqApiKey = config('ai.groq_api_key', '');
     }
 
     // ─── CHAT ────────────────────────────────────────────────────────────────
@@ -66,36 +69,31 @@ PROMPT;
 
         try {
             // 2. Retrieve context via RAG
-            $chunks    = $this->ragService->retrieve($userMessage, $user, $documentId);
-            $context   = $this->ragService->buildContext($chunks);
-            $sources   = $this->ragService->buildCitations($chunks); // → disimpan di kolom 'sources'
+            $chunks  = $this->ragService->retrieve($userMessage, $user, $documentId);
+            $context = $this->ragService->buildContext($chunks);
+            $sources = $this->ragService->buildCitations($chunks);
 
-            // 3. Build messages untuk OpenAI
+            // 3. Build messages
             $messages = $this->buildChatMessages($chat, $userMessage, $context);
 
-            // 4. Panggil LLM
-            $response = OpenAI::chat()->create([
-                'model'       => $this->chatModel,
-                'messages'    => $messages,
-                'max_tokens'  => $this->maxTokens,
-                'temperature' => 0.2,
-            ]);
+            // 4. Panggil Groq
+            $result = $this->callGroq($messages, $this->maxTokens);
 
-            $aiContent     = $response->choices[0]->message->content;
-            $tokensUsed    = $response->usage->totalTokens ?? 0;
+            $aiContent      = $result['content'];
+            $tokensUsed     = $result['tokens'];
             $responseTimeMs = (int) ((microtime(true) - $startTime) * 1000);
 
-            // 5. Simpan pesan AI — pakai kolom sesuai model AiMessage
+            // 5. Simpan pesan AI
             $aiMsg = AiMessage::create([
-                'ai_chat_id'      => $chat->id,
-                'role'            => 'assistant',
-                'content'         => $aiContent,
-                'sources'         => $sources,          // ← sesuai model (bukan citations)
-                'tokens_used'     => $tokensUsed,
-                'response_time_ms' => $responseTimeMs,  // ← sesuai model
+                'ai_chat_id'       => $chat->id,
+                'role'             => 'assistant',
+                'content'          => $aiContent,
+                'sources'          => $sources,
+                'tokens_used'      => $tokensUsed,
+                'response_time_ms' => $responseTimeMs,
             ]);
 
-            // 6. Audit log — sesuai kolom AiLog
+            // 6. Audit log
             AiLog::record(
                 action: 'chat',
                 query: substr($userMessage, 0, 500),
@@ -153,18 +151,13 @@ PROMPT;
 
         $context = $this->ragService->buildContext($chunks);
 
-        $response = OpenAI::chat()->create([
-            'model'       => $this->chatModel,
-            'messages'    => [
-                ['role' => 'system', 'content' => self::SYSTEM_PROMPT],
-                ['role' => 'user',   'content' => $this->buildSummaryPrompt($context, $document->title)],
-            ],
-            'max_tokens'  => 2000,
-            'temperature' => 0.1,
-        ]);
+        $result = $this->callGroq([
+            ['role' => 'system', 'content' => self::SYSTEM_PROMPT],
+            ['role' => 'user',   'content' => $this->buildSummaryPrompt($context, $document->title)],
+        ], 2000);
 
-        $raw = $response->choices[0]->message->content;
-        $tokensUsed = $response->usage->totalTokens ?? 0;
+        $raw        = $result['content'];
+        $tokensUsed = $result['tokens'];
 
         AiLog::record(
             action: 'summarize',
@@ -205,24 +198,19 @@ PROMPT;
             ];
         }
 
-        $response = OpenAI::chat()->create([
-            'model'       => $this->chatModel,
-            'messages'    => [
-                ['role' => 'system', 'content' => self::SYSTEM_PROMPT],
-                ['role' => 'user',   'content' => $this->buildComparePrompt(
-                    $document->title,
-                    $oldVersion->version_number,
-                    $newVersion->version_number,
-                    $oldContext,
-                    $newContext,
-                )],
-            ],
-            'max_tokens'  => 2000,
-            'temperature' => 0.1,
-        ]);
+        $result = $this->callGroq([
+            ['role' => 'system', 'content' => self::SYSTEM_PROMPT],
+            ['role' => 'user',   'content' => $this->buildComparePrompt(
+                $document->title,
+                $oldVersion->version_number,
+                $newVersion->version_number,
+                $oldContext,
+                $newContext,
+            )],
+        ], 2000);
 
-        $raw = $response->choices[0]->message->content;
-        $tokensUsed = $response->usage->totalTokens ?? 0;
+        $raw        = $result['content'];
+        $tokensUsed = $result['tokens'];
 
         AiLog::record(
             action: 'version_compare',
@@ -246,7 +234,7 @@ PROMPT;
             'user_id'     => $user->id,
             'title'       => $title,
             'document_id' => $documentId,
-            'mode'        => $documentId ? 'document' : 'global', // ← sesuai model (bukan context_type)
+            'mode'        => $documentId ? 'document' : 'global',
         ]);
     }
 
@@ -258,6 +246,40 @@ PROMPT;
             ->get();
     }
 
+    // ─── Groq HTTP Call ──────────────────────────────────────────────────────
+
+    /**
+     * Panggil Groq API via HTTP (kompatibel OpenAI format).
+     * Return: ['content' => string, 'tokens' => int]
+     */
+    private function callGroq(array $messages, int $maxTokens = 1500): array
+    {
+        if (empty($this->groqApiKey)) {
+            throw new \RuntimeException('GROQ_API_KEY belum diset di .env');
+        }
+
+        $response = Http::withToken($this->groqApiKey)
+            ->timeout(60)
+            ->post($this->groqEndpoint, [
+                'model'       => $this->chatModel,
+                'messages'    => $messages,
+                'max_tokens'  => $maxTokens,
+                'temperature' => 0.2,
+            ]);
+
+        if ($response->failed()) {
+            $error = $response->json('error.message') ?? $response->body();
+            throw new \RuntimeException("Groq API error: {$error}");
+        }
+
+        $data = $response->json();
+
+        return [
+            'content' => $data['choices'][0]['message']['content'] ?? '',
+            'tokens'  => $data['usage']['total_tokens'] ?? 0,
+        ];
+    }
+
     // ─── Build Prompts ────────────────────────────────────────────────────────
 
     private function buildChatMessages(AiChat $chat, string $userMessage, string $context): array
@@ -266,7 +288,7 @@ PROMPT;
             ['role' => 'system', 'content' => self::SYSTEM_PROMPT],
         ];
 
-        // History percakapan (max 10 terakhir, skip error)
+        // History percakapan (max 10 terakhir)
         $history = $chat->messages()
             ->whereIn('role', ['user', 'assistant'])
             ->orderBy('created_at', 'desc')
@@ -287,7 +309,7 @@ PROMPT;
         } else {
             $messages[] = [
                 'role'    => 'user',
-                'content' => "Pertanyaan: {$userMessage}\n\n(Tidak ditemukan dokumen relevan dengan pertanyaan ini.)",
+                'content' => "Pertanyaan: {$userMessage}\n\n(Tidak ditemukan dokumen relevan dengan pertanyaan ini. Jawab berdasarkan pengetahuan umum tentang document control jika relevan.)",
             ];
         }
 
