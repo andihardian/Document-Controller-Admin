@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\ProcessDocumentEmbedding;
 use App\Models\AuditLog;
 use App\Models\Document;
 use App\Models\DocumentCategory;
@@ -20,17 +21,14 @@ class DocumentController extends Controller
         $user  = auth()->user();
         $query = Document::with(['category', 'department', 'creator', 'currentVersion']);
 
-        // Employee hanya lihat dokumen miliknya
         if ($user->hasRole('employee')) {
             $query->where('created_by', $user->id);
         }
 
-        // Department head hanya lihat departemennya
         if ($user->hasRole('department_head')) {
             $query->forDepartment($user->department_id);
         }
 
-        // Filter
         if ($request->filled('status'))     $query->where('status', $request->status);
         if ($request->filled('department')) $query->where('department_id', $request->department);
         if ($request->filled('category'))   $query->where('category_id', $request->category);
@@ -63,10 +61,8 @@ class DocumentController extends Controller
             $category   = DocumentCategory::findOrFail($request->category_id);
             $department = Department::findOrFail($request->department_id);
 
-            // Generate nomor dokumen otomatis
             $docNumber = $category->generateDocumentNumber($department);
 
-            // Simpan file PDF
             $file     = $request->file('document_file');
             $fileName = 'v1.0.pdf';
             $filePath = $file->storeAs(
@@ -75,7 +71,6 @@ class DocumentController extends Controller
                 'public'
             );
 
-            // Buat record dokumen
             $document = Document::create([
                 'document_number' => $docNumber,
                 'title'           => $request->title,
@@ -87,19 +82,24 @@ class DocumentController extends Controller
                 'status'          => Document::STATUS_DRAFT,
                 'effective_date'  => $request->effective_date,
                 'expiry_date'     => $request->expiry_date,
+                'allow_ai_access' => true, // default aktifkan AI access
             ]);
 
-            // Buat versi pertama
-            DocumentVersion::create([
-                'document_id'    => $document->id,
-                'version_number' => '1.0',
-                'revision_note'  => $request->revision_note ?? 'Versi awal',
-                'file_path'      => $filePath,
-                'file_size'      => $file->getSize(),
-                'uploaded_by'    => $user->id,
-                'status'         => 'draft',
-                'is_current'     => true,
+            $version = DocumentVersion::create([
+                'document_id'      => $document->id,
+                'version_number'   => '1.0',
+                'revision_note'    => $request->revision_note ?? 'Versi awal',
+                'file_path'        => $filePath,
+                'file_size'        => $file->getSize(),
+                'uploaded_by'      => $user->id,
+                'status'           => 'draft',
+                'is_current'       => true,
+                'embedding_status' => 'pending',
             ]);
+
+            // Dispatch job untuk parsing + embedding PDF
+            ProcessDocumentEmbedding::dispatch($version->id)
+                ->onQueue(config('ai.queue', 'default'));
 
             AuditLog::record('upload', 'documents',
                 "Upload dokumen baru: {$docNumber} - {$request->title}",
@@ -108,7 +108,7 @@ class DocumentController extends Controller
         });
 
         return redirect()->route('documents.index')
-            ->with('success', 'Dokumen berhasil diunggah.');
+            ->with('success', 'Dokumen berhasil diunggah dan sedang diproses untuk AI.');
     }
 
     public function show(Document $document)
@@ -157,7 +157,6 @@ class DocumentController extends Controller
             ->with('success', 'Dokumen berhasil diperbarui.');
     }
 
-    /** Submit dokumen untuk approval */
     public function submit(Document $document)
     {
         $this->authorizeDocumentAccess($document);
@@ -173,7 +172,6 @@ class DocumentController extends Controller
             $version = $document->currentVersion;
             $version->update(['status' => 'pending_approval']);
 
-            // Buat record approval untuk department head
             $headUser = \App\Models\User::role('department_head')
                 ->where('department_id', $document->department_id)
                 ->first();
@@ -196,7 +194,6 @@ class DocumentController extends Controller
             ->with('success', 'Dokumen berhasil disubmit untuk approval.');
     }
 
-    /** Upload revisi dokumen baru */
     public function revise(Request $request, Document $document)
     {
         $this->authorizeDocumentAccess($document);
@@ -211,29 +208,32 @@ class DocumentController extends Controller
         ]);
 
         DB::transaction(function () use ($request, $document) {
-            $user        = auth()->user();
-            $newVersion  = DocumentVersion::nextVersionNumber($document->id);
-            $department  = $document->department;
-            $fileName    = "v{$newVersion}.pdf";
-            $filePath    = $request->file('document_file')->storeAs(
+            $user       = auth()->user();
+            $newVersion = DocumentVersion::nextVersionNumber($document->id);
+            $department = $document->department;
+            $fileName   = "v{$newVersion}.pdf";
+            $filePath   = $request->file('document_file')->storeAs(
                 "documents/{$department->code}/{$document->document_number}",
                 $fileName, 'public'
             );
 
-            // Non-aktifkan versi lama
             $document->versions()->update(['is_current' => false]);
 
-            // Buat versi baru
-            DocumentVersion::create([
-                'document_id'    => $document->id,
-                'version_number' => $newVersion,
-                'revision_note'  => $request->revision_note,
-                'file_path'      => $filePath,
-                'file_size'      => $request->file('document_file')->getSize(),
-                'uploaded_by'    => $user->id,
-                'status'         => 'draft',
-                'is_current'     => true,
+            $version = DocumentVersion::create([
+                'document_id'      => $document->id,
+                'version_number'   => $newVersion,
+                'revision_note'    => $request->revision_note,
+                'file_path'        => $filePath,
+                'file_size'        => $request->file('document_file')->getSize(),
+                'uploaded_by'      => $user->id,
+                'status'           => 'draft',
+                'is_current'       => true,
+                'embedding_status' => 'pending',
             ]);
+
+            // Dispatch embedding untuk versi baru
+            ProcessDocumentEmbedding::dispatch($version->id)
+                ->onQueue(config('ai.queue', 'default'));
 
             $document->update([
                 'current_version' => $newVersion,
@@ -247,7 +247,7 @@ class DocumentController extends Controller
         });
 
         return redirect()->route('documents.show', $document)
-            ->with('success', 'Revisi berhasil diunggah.');
+            ->with('success', 'Revisi berhasil diunggah dan sedang diproses untuk AI.');
     }
 
     public function download(Document $document, DocumentVersion $version = null)
@@ -294,8 +294,6 @@ class DocumentController extends Controller
             ->with('success', 'Dokumen berhasil dihapus permanen.');
     }
 
-    // ─── Private Helper ───────────────────────────────────
-
     private function authorizeDocumentAccess(Document $document): void
     {
         $user = auth()->user();
@@ -312,7 +310,6 @@ class DocumentController extends Controller
             return;
         }
 
-        // Viewer hanya bisa lihat dokumen approved
         if ($user->hasRole('viewer')) {
             abort_if($document->status !== Document::STATUS_APPROVED, 403);
         }

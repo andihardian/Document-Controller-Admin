@@ -19,11 +19,14 @@ class DocumentVersion extends Model
         'approved_at',
         'status',
         'is_current',
+        'embedding_status', // pending | processing | done | failed
+        'page_count',
     ];
 
     protected $casts = [
         'approved_at' => 'datetime',
         'is_current'  => 'boolean',
+        'page_count'  => 'integer',
     ];
 
     // ─── Relasi ───────────────────────────────────────────
@@ -48,15 +51,30 @@ class DocumentVersion extends Model
         return $this->hasMany(Approval::class);
     }
 
-    // ─── Helper ───────────────────────────────────────────
+    public function chunks(): HasMany
+    {
+        return $this->hasMany(DocumentChunk::class);
+    }
 
-    /** URL untuk download file */
+    // ─── Scopes ───────────────────────────────────────────
+
+    public function scopeEmbeddingDone($query)
+    {
+        return $query->where('embedding_status', 'done');
+    }
+
+    public function scopeEmbeddingPending($query)
+    {
+        return $query->where('embedding_status', 'pending');
+    }
+
+    // ─── Attributes ───────────────────────────────────────
+
     public function getFileUrlAttribute(): string
     {
         return asset('storage/' . $this->file_path);
     }
 
-    /** Ukuran file dalam format human-readable */
     public function getFileSizeHumanAttribute(): string
     {
         if (!$this->file_size) return '-';
@@ -67,7 +85,19 @@ class DocumentVersion extends Model
         return $bytes . ' B';
     }
 
-    /** Generate nomor versi berikutnya untuk dokumen ini */
+    public function getEmbeddingStatusLabelAttribute(): string
+    {
+        return match ($this->embedding_status) {
+            'pending'    => '⏳ Menunggu proses',
+            'processing' => '🔄 Sedang diproses',
+            'done'       => '✅ Siap digunakan AI',
+            'failed'     => '❌ Gagal diproses',
+            default      => '-',
+        };
+    }
+
+    // ─── Helpers ─────────────────────────────────────────
+
     public static function nextVersionNumber(int $documentId): string
     {
         $latest = self::where('document_id', $documentId)

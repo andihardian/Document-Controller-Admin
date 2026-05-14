@@ -16,7 +16,7 @@ class DocumentParserService
      */
     public function parse(DocumentVersion $version): array
     {
-        $path = Storage::path($version->file_path);
+        $path = Storage::disk('public')->path($version->file_path);
 
         if (! file_exists($path)) {
             return $this->fail("File tidak ditemukan: {$version->file_path}");
