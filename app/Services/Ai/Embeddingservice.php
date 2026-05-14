@@ -49,8 +49,9 @@ class EmbeddingService
                     'chunk_index'         => $index,
                     'content'             => $chunk['text'],
                     'embedding'           => json_encode($embedding),
-                    'page'                => $chunk['page'],
-                    'token_count'         => $this->estimateTokens($chunk['text']),
+                    'page_number'         => $chunk['page'],       // fix: page → page_number
+                    'content_hash'        => DocumentChunk::makeContentHash($chunk['text']),
+                    'embedding_status'    => 'done',
                 ]);
 
                 $saved++;
@@ -73,7 +74,15 @@ class EmbeddingService
      */
     public function embedQuery(string $query): array
     {
-        return $this->generateEmbedding($query);
+        try {
+            return $this->generateEmbedding($query);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('EmbeddingService::embedQuery gagal', [
+                'error' => $e->getMessage(),
+            ]);
+            // Return empty array → RAG akan return 0 chunks → AI reply "dokumen tidak ditemukan"
+            return [];
+        }
     }
 
     // ─── Chunking ────────────────────────────────────────────────────────────
