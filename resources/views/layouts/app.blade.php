@@ -25,7 +25,7 @@
                     </svg>
                 </div>
                 <div class="leading-tight">
-                    <p class="text-sm font-bold text-white tracking-wide">Document Control</p>
+                    <p class="text-sm font-bold text-white tracking-wide">DocuCo</p>
                     <p class="text-xs text-slate-400">System</p>
                 </div>
             </div>

@@ -2,7 +2,7 @@
 @section('title', 'AI Assistant')
 
 @section('breadcrumb')
-    <span class="text-gray-400">AI</span>
+    <span class="text-gray-400 dark:text-gray-500">AI</span>
     <span class="mx-1">›</span>
     <span>Assistant</span>
 @endsection
@@ -37,14 +37,14 @@
     @if($documents->count() > 0)
     <div>
         <div class="flex items-center justify-between mb-4">
-            <h3 class="text-sm font-semibold text-gray-700">
+            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300">
                 Dokumen Tersedia
-                <span class="ml-2 text-xs font-normal text-gray-400">({{ $documents->count() }} dokumen)</span>
+                <span class="ml-2 text-xs font-normal text-gray-400 dark:text-gray-500">({{ $documents->count() }} dokumen)</span>
             </h3>
             @if(auth()->user()->hasRole('admin'))
-            <span class="text-xs text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">Semua departemen</span>
+            <span class="text-xs text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-full">Semua departemen</span>
             @else
-            <span class="text-xs text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">
+            <span class="text-xs text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-full">
                 {{ auth()->user()->department->name ?? 'Departemen Anda' }}
             </span>
             @endif
@@ -52,40 +52,37 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             @foreach($documents as $doc)
-            {{-- ✅ Link ke ai.document-context bukan documents.show --}}
             <a href="{{ route('ai.document-context', $doc) }}"
-               class="group bg-white rounded-xl border border-gray-200 p-4 hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer">
+               class="group bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md transition-all cursor-pointer">
                 <div class="flex items-start gap-3">
-                    <div class="w-9 h-9 bg-indigo-50 group-hover:bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors">
-                        <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="w-9 h-9 bg-indigo-50 dark:bg-indigo-950/40 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/50 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors">
+                        <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
                         </svg>
                     </div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 mb-1">
-                            <span class="font-mono text-xs text-gray-400">{{ $doc->document_number }}</span>
-                            @php
-                                $embStatus = $doc->currentVersion?->embedding_status ?? 'pending';
-                            @endphp
+                            <span class="font-mono text-xs text-gray-400 dark:text-gray-500">{{ $doc->document_number }}</span>
+                            @php $embStatus = $doc->currentVersion?->embedding_status ?? 'pending'; @endphp
                             @if($embStatus === 'done')
-                            <span class="text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">AI Siap</span>
+                            <span class="text-xs bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded-full">AI Siap</span>
                             @else
-                            <span class="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">Memproses...</span>
+                            <span class="text-xs bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded-full">Memproses...</span>
                             @endif
                         </div>
-                        <p class="text-sm font-semibold text-gray-800 group-hover:text-indigo-700 truncate transition-colors">
+                        <p class="text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-indigo-700 dark:group-hover:text-indigo-400 truncate transition-colors">
                             {{ $doc->title }}
                         </p>
                         <div class="flex items-center gap-2 mt-1 flex-wrap">
-                            <span class="text-xs text-gray-400">{{ $doc->department->name ?? '-' }}</span>
-                            <span class="text-gray-300">·</span>
-                            <span class="text-xs text-gray-400">v{{ $doc->current_version }}</span>
-                            <span class="text-gray-300">·</span>
-                            <span class="text-xs text-gray-400">{{ $doc->category->name ?? '-' }}</span>
+                            <span class="text-xs text-gray-400 dark:text-gray-500">{{ $doc->department->name ?? '-' }}</span>
+                            <span class="text-gray-300 dark:text-gray-600">·</span>
+                            <span class="text-xs text-gray-400 dark:text-gray-500">v{{ $doc->current_version }}</span>
+                            <span class="text-gray-300 dark:text-gray-600">·</span>
+                            <span class="text-xs text-gray-400 dark:text-gray-500">{{ $doc->category->name ?? '-' }}</span>
                         </div>
                     </div>
-                    <svg class="w-4 h-4 text-gray-300 group-hover:text-indigo-400 flex-shrink-0 mt-1 transition-colors"
+                    <svg class="w-4 h-4 text-gray-300 dark:text-gray-600 group-hover:text-indigo-400 flex-shrink-0 mt-1 transition-colors"
                          fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                     </svg>
@@ -95,22 +92,21 @@
         </div>
     </div>
     @else
-    {{-- Empty state --}}
-    <div class="bg-white rounded-2xl border border-gray-200 p-12 text-center">
-        <div class="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-12 text-center">
+        <div class="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                       d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
             </svg>
         </div>
-        <h3 class="text-base font-semibold text-gray-700 mb-1">Belum Ada Dokumen</h3>
-        <p class="text-sm text-gray-400">Belum ada dokumen approved yang bisa diakses AI di departemen Anda.</p>
+        <h3 class="text-base font-semibold text-gray-700 dark:text-gray-300 mb-1">Belum Ada Dokumen</h3>
+        <p class="text-sm text-gray-400 dark:text-gray-500">Belum ada dokumen approved yang bisa diakses AI di departemen Anda.</p>
     </div>
     @endif
 
     {{-- Cara pakai --}}
-    <div class="bg-gray-50 rounded-xl border border-gray-200 p-4">
-        <p class="text-xs font-semibold text-gray-500 mb-2">Cara menggunakan AI Assistant:</p>
+    <div class="bg-gray-50 dark:bg-gray-900/60 rounded-xl border border-gray-200 dark:border-gray-800 p-4">
+        <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">Cara menggunakan AI Assistant:</p>
         <div class="space-y-1.5">
             @foreach([
                 'Pilih dokumen yang ingin ditanyakan dari daftar di atas',
@@ -119,8 +115,8 @@
                 'Verifikasi jawaban AI dengan membaca dokumen asli di sebelah kiri',
             ] as $i => $step)
             <div class="flex items-start gap-2">
-                <span class="text-xs font-bold text-indigo-600 flex-shrink-0">{{ $i + 1 }}.</span>
-                <p class="text-xs text-gray-500">{{ $step }}</p>
+                <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 flex-shrink-0">{{ $i + 1 }}.</span>
+                <p class="text-xs text-gray-500 dark:text-gray-400">{{ $step }}</p>
             </div>
             @endforeach
         </div>
