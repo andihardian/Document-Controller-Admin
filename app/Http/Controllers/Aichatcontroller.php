@@ -6,6 +6,7 @@ use App\Jobs\ProcessDocumentEmbedding;
 use App\Models\AiChat;
 use App\Models\Document;
 use App\Services\AI\AIService;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,6 +14,8 @@ use Illuminate\Support\Facades\RateLimiter;
 
 class AiChatController extends Controller
 {
+    use AuthorizesRequests;
+
     public function __construct(
         private readonly AIService $aiService,
     ) {}
@@ -20,17 +23,44 @@ class AiChatController extends Controller
     // ─── Page ─────────────────────────────────────────────────────────────────
 
     /**
-     * Halaman utama AI Assistant (global chat).
+     * Halaman index AI — tampilkan daftar dokumen approved sesuai RBAC.
      */
     public function index()
     {
-        $user  = Auth::user();
-        $chats = AiChat::where('user_id', $user->id)
-            ->latest('last_activity_at')
-            ->limit(30)
-            ->get(['id', 'title', 'mode', 'last_activity_at', 'document_id']); // ← mode bukan context_type
+        $user = Auth::user();
+        $role = $user->roles->first()?->name;
 
-        return view('ai.index', compact('chats'));
+        $query = Document::with(['category', 'department', 'currentVersion'])
+            ->where('status', Document::STATUS_APPROVED)
+            ->where('allow_ai_access', true)
+            ->whereNull('deleted_at');
+
+        switch ($role) {
+            case 'admin':
+                // Admin bisa lihat semua
+                break;
+
+            case 'department_head':
+                // Head hanya lihat departemennya
+                $query->where('department_id', $user->department_id);
+                break;
+
+            case 'employee':
+                // Employee hanya lihat departemennya
+                $query->where('department_id', $user->department_id);
+                break;
+
+            case 'viewer':
+            default:
+                // Viewer hanya lihat public/internal
+                $query->where('department_id', $user->department_id)
+                      ->whereIn('sensitivity_level', ['public', 'internal']);
+                break;
+        }
+
+        $documents = $query->latest()->get();
+
+        return view('ai.index', compact('documents'));
     }
 
     /**
@@ -57,10 +87,6 @@ class AiChatController extends Controller
 
     // ─── Chat Session ─────────────────────────────────────────────────────────
 
-    /**
-     * Buat chat session baru.
-     * POST /ai/chats
-     */
     public function createChat(Request $request): JsonResponse
     {
         $request->validate([
@@ -86,16 +112,12 @@ class AiChatController extends Controller
             'chat'    => [
                 'id'          => $chat->id,
                 'title'       => $chat->title,
-                'mode'        => $chat->mode,          // ← mode
+                'mode'        => $chat->mode,
                 'document_id' => $chat->document_id,
             ],
         ]);
     }
 
-    /**
-     * Ambil daftar pesan dalam satu chat.
-     * GET /ai/chats/{chat}
-     */
     public function showChat(AiChat $chat): JsonResponse
     {
         $this->authorizeChat($chat);
@@ -108,17 +130,13 @@ class AiChatController extends Controller
                 'id'          => $m->id,
                 'role'        => $m->role,
                 'content'     => $m->content,
-                'sources'     => $m->sources ?? [],   // ← sources bukan citations
+                'sources'     => $m->sources ?? [],
                 'tokens_used' => $m->tokens_used,
                 'created_at'  => $m->created_at->toISOString(),
             ]),
         ]);
     }
 
-    /**
-     * Hapus chat.
-     * DELETE /ai/chats/{chat}
-     */
     public function deleteChat(AiChat $chat): JsonResponse
     {
         $this->authorizeChat($chat);
@@ -130,10 +148,6 @@ class AiChatController extends Controller
 
     // ─── Send Message ─────────────────────────────────────────────────────────
 
-    /**
-     * Kirim pesan ke AI.
-     * POST /ai/chats/{chat}/messages
-     */
     public function sendMessage(Request $request, AiChat $chat): JsonResponse
     {
         $this->authorizeChat($chat);
@@ -146,7 +160,6 @@ class AiChatController extends Controller
         $user    = Auth::user();
         $message = trim($request->message);
 
-        // Rate limiting: max 30 pesan per menit per user
         $rateLimitKey = 'ai-chat:' . $user->id;
         $maxPerMinute = (int) config('ai.rate_limit', 30);
 
@@ -164,7 +177,7 @@ class AiChatController extends Controller
 
         if ($documentId) {
             $doc = Document::find($documentId);
-            if (! $doc) {
+            if (!$doc) {
                 return response()->json(['success' => false, 'message' => 'Dokumen tidak ditemukan.'], 404);
             }
             $this->authorize('view', $doc);
@@ -178,7 +191,7 @@ class AiChatController extends Controller
                 'id'         => $aiMessage->id,
                 'role'       => $aiMessage->role,
                 'content'    => $aiMessage->content,
-                'sources'    => $aiMessage->sources ?? [],   // ← sources
+                'sources'    => $aiMessage->sources ?? [],
                 'created_at' => $aiMessage->created_at->toISOString(),
             ],
         ]);
@@ -186,10 +199,6 @@ class AiChatController extends Controller
 
     // ─── Summary & Compare ────────────────────────────────────────────────────
 
-    /**
-     * Ringkas dokumen via AI.
-     * POST /ai/documents/{document}/summarize
-     */
     public function summarize(Document $document): JsonResponse
     {
         $this->authorize('view', $document);
@@ -199,10 +208,6 @@ class AiChatController extends Controller
         return response()->json(['success' => true, 'data' => $result]);
     }
 
-    /**
-     * Bandingkan dua versi dokumen.
-     * POST /ai/documents/{document}/compare-versions
-     */
     public function compareVersions(Request $request, Document $document): JsonResponse
     {
         $this->authorize('view', $document);

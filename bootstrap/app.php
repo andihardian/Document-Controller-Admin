@@ -13,6 +13,9 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    ->withProviders([
+        App\Providers\AuthServiceProvider::class,
+    ])
     ->withMiddleware(function (Middleware $middleware) {
 
         // Tambahkan ke grup 'web' — berlaku untuk semua request web
@@ -21,10 +24,10 @@ return Application::configure(basePath: dirname(__DIR__))
             UpdateLastLogin::class,
         ]);
 
-        // Alias untuk dipakai di route (role: dari Spatie sudah otomatis lewat ServiceProvider)
+        // Alias untuk dipakai di route
         $middleware->alias([
-            'role'       => \Spatie\Permission\Middleware\RoleMiddleware::class,
-            'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
+            'role'               => \Spatie\Permission\Middleware\RoleMiddleware::class,
+            'permission'         => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
         ]);
 
