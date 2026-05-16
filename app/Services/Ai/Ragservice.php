@@ -10,32 +10,24 @@ use Illuminate\Support\Facades\Log;
 
 class RAGService
 {
-    private int $maxChunks;
+    private int   $maxChunks;
     private float $similarityThreshold;
 
     public function __construct(
         private readonly EmbeddingService $embeddingService,
     ) {
-        $this->maxChunks           = (int) config('ai.max_chunks', 5);
-        $this->similarityThreshold = (float) config('ai.similarity_threshold', 0.3);
+        $this->maxChunks           = (int)   config('ai.max_chunks', 5);
+        $this->similarityThreshold = (float) config('ai.similarity_threshold', 0.05);
     }
 
     // ─── Public API ──────────────────────────────────────────────────────────
 
     /**
      * Ambil chunks paling relevan untuk query, dengan filter RBAC.
-     *
-     * @param  string    $query       Pertanyaan dari user
-     * @param  User      $user        User yang sedang login (untuk filter RBAC)
-     * @param  int|null  $documentId  Jika tidak null → fokus ke dokumen ini saja
-     * @return Collection<DocumentChunk>  Diurutkan dari paling relevan
      */
     public function retrieve(string $query, User $user, ?int $documentId = null): Collection
     {
-        // 1. Embed query
-        $queryEmbedding = $this->embeddingService->embedQuery($query);
-
-        // 2. Ambil candidate chunks (sudah difilter RBAC + AI permission)
+        $queryEmbedding  = $this->embeddingService->embedQuery($query);
         $candidateChunks = $this->getCandidateChunks($user, $documentId);
 
         if ($candidateChunks->isEmpty()) {
@@ -46,7 +38,11 @@ class RAGService
             return collect();
         }
 
-        // 3. Hitung cosine similarity & filter threshold
+        if (empty($queryEmbedding)) {
+            // Fallback: ambil chunk pertama saja jika embedding query gagal
+            return $candidateChunks->take($this->maxChunks);
+        }
+
         $scored = $candidateChunks
             ->map(function (DocumentChunk $chunk) use ($queryEmbedding) {
                 return [
@@ -59,10 +55,11 @@ class RAGService
             ->take($this->maxChunks);
 
         Log::info('RAGService: chunks retrieved', [
-            'user_id'          => $user->id,
-            'document_id'      => $documentId,
-            'candidate_count'  => $candidateChunks->count(),
-            'matched_count'    => $scored->count(),
+            'user_id'         => $user->id,
+            'document_id'     => $documentId,
+            'candidate_count' => $candidateChunks->count(),
+            'matched_count'   => $scored->count(),
+            'top_similarity'  => $scored->first()['similarity'] ?? 0,
         ]);
 
         return $scored->pluck('chunk');
@@ -70,7 +67,6 @@ class RAGService
 
     /**
      * Build context string dari chunks untuk dikirim ke LLM.
-     * Format yang dibaca AI: "Dokumen X, Hal Y:\n<konten>"
      */
     public function buildContext(Collection $chunks): string
     {
@@ -78,19 +74,15 @@ class RAGService
             return '';
         }
 
-        $parts = $chunks->map(function (DocumentChunk $chunk) {
+        return $chunks->map(function (DocumentChunk $chunk) {
             $docTitle  = $chunk->document->title ?? 'Tidak diketahui';
             $pageLabel = $chunk->page_number ? "Halaman {$chunk->page_number}" : 'Halaman tidak diketahui';
-
             return "[Sumber: {$docTitle} | {$pageLabel}]\n{$chunk->content}";
-        });
-
-        return $parts->implode("\n\n---\n\n");
+        })->implode("\n\n---\n\n");
     }
 
     /**
-     * Format citations dari chunks (untuk ditampilkan di UI).
-     * Return: array of citation objects.
+     * Format citations dari chunks untuk ditampilkan di UI.
      */
     public function buildCitations(Collection $chunks): array
     {
@@ -98,15 +90,14 @@ class RAGService
             ->unique(fn (DocumentChunk $c) => $c->document_id . '-' . $c->page_number)
             ->map(function (DocumentChunk $chunk) {
                 $doc = $chunk->document;
-
                 return [
-                    'document_id'      => $chunk->document_id,
-                    'document_title'   => $doc->title ?? 'Tidak diketahui',
-                    'document_number'  => $doc->document_number ?? '-',
-                    'page_number'      => $chunk->page_number,
-                    'chunk_index'      => $chunk->chunk_index,
-                    'version'          => $doc->current_version ?? '-',
-                    'department'       => $doc->department->name ?? '-',
+                    'document_id'     => $chunk->document_id,
+                    'document'        => $doc->title ?? 'Tidak diketahui',
+                    'document_number' => $doc->document_number ?? '-',
+                    'page'            => $chunk->page_number,
+                    'chunk_id'        => $chunk->chunk_index,
+                    'version'         => $doc->current_version ?? '-',
+                    'department'      => $doc->department->name ?? '-',
                 ];
             })
             ->values()
@@ -115,18 +106,16 @@ class RAGService
 
     /**
      * Retrieve khusus untuk perbandingan dua versi dokumen.
-     * Return ['old' => Collection, 'new' => Collection]
      */
     public function retrieveForVersionCompare(
         string $query,
-        User $user,
-        int $documentId,
-        int $oldVersionId,
-        int $newVersionId,
+        User   $user,
+        int    $documentId,
+        int    $oldVersionId,
+        int    $newVersionId,
     ): array {
         $queryEmbedding = $this->embeddingService->embedQuery($query);
-
-        $base = $this->getChunksForDocument($user, $documentId);
+        $base           = $this->getCandidateChunks($user, $documentId);
 
         $oldChunks = $base->where('document_version_id', $oldVersionId);
         $newChunks = $base->where('document_version_id', $newVersionId);
@@ -139,15 +128,20 @@ class RAGService
 
     // ─── RBAC Filter ─────────────────────────────────────────────────────────
 
-    /**
-     * Ambil chunks yang BOLEH diakses user ini.
-     * Filter dilakukan di level query (bukan di PHP) untuk efisiensi.
-     */
     private function getCandidateChunks(User $user, ?int $documentId = null): Collection
     {
         $accessibleDocIds = $this->getAccessibleDocumentIds($user);
 
         if ($accessibleDocIds->isEmpty()) {
+            return collect();
+        }
+
+        // Jika dokumen spesifik diminta, pastikan user boleh aksesnya
+        if ($documentId !== null && !$accessibleDocIds->contains($documentId)) {
+            Log::warning('RAGService: akses dokumen ditolak RBAC', [
+                'user_id'     => $user->id,
+                'document_id' => $documentId,
+            ]);
             return collect();
         }
 
@@ -157,37 +151,25 @@ class RAGService
             ->whereNotNull('embedding');
 
         if ($documentId !== null) {
-            // Pastikan document_id yang diminta memang boleh diakses
-            if (! $accessibleDocIds->contains($documentId)) {
-                Log::warning('RAGService: user mencoba akses dokumen yang tidak diizinkan', [
-                    'user_id'     => $user->id,
-                    'document_id' => $documentId,
-                ]);
-                return collect();
-            }
             $query->where('document_id', $documentId);
         }
 
         return $query->get();
     }
 
-    private function getChunksForDocument(User $user, int $documentId): Collection
-    {
-        return $this->getCandidateChunks($user, $documentId);
-    }
-
     /**
      * Dapatkan daftar document_id yang boleh diakses user.
-     * Logika RBAC:
-     *  - admin           → semua dokumen (allow_ai_access = true)
-     *  - head_department → dokumen dept sendiri + approved dokumen dept lain
-     *  - employee        → dokumen dept sendiri yang approved
-     *  - viewer          → hanya dokumen approved yang allow_ai_access = true
+     *
+     * RBAC:
+     *  - admin            → semua dokumen (allow_ai_access = true)
+     *  - department_head  → dokumen departemen sendiri saja (approved)
+     *  - employee         → dokumen departemen sendiri saja (approved)
+     *  - viewer           → dokumen approved + sensitivity public/internal
      */
     private function getAccessibleDocumentIds(User $user): Collection
     {
-        $role       = $user->roles->first()?->name;
-        $deptId     = $user->department_id;
+        $role   = $user->roles->first()?->name;
+        $deptId = $user->department_id;
 
         $query = Document::query()
             ->where('allow_ai_access', true)
@@ -195,27 +177,20 @@ class RAGService
 
         switch ($role) {
             case 'admin':
-                // Admin bisa lihat semua, kecuali deleted
+                // Semua dokumen tanpa batasan departemen
                 break;
 
-            case 'head_department':
-                // Semua di dept sendiri + approved di dept lain
-                $query->where(function ($q) use ($deptId) {
-                    $q->where('department_id', $deptId)
-                      ->orWhere('status', Document::STATUS_APPROVED);
-                });
-                break;
-
+            case 'department_head':
             case 'employee':
-                // Hanya dokumen approved di dept sendiri
+                // Hanya dokumen approved di departemen sendiri
                 $query->where('department_id', $deptId)
                       ->where('status', Document::STATUS_APPROVED);
                 break;
 
             case 'viewer':
             default:
-                // Hanya dokumen approved + sensitivity rendah
                 $query->where('status', Document::STATUS_APPROVED)
+                      ->where('department_id', $deptId)
                       ->whereIn('sensitivity_level', ['public', 'internal']);
                 break;
         }
@@ -223,10 +198,14 @@ class RAGService
         return $query->pluck('id');
     }
 
-    // ─── Internal Helpers ────────────────────────────────────────────────────
+    // ─── Helpers ─────────────────────────────────────────────────────────────
 
     private function scoreAndFilter(Collection $chunks, array $queryEmbedding): Collection
     {
+        if (empty($queryEmbedding)) {
+            return $chunks->take($this->maxChunks);
+        }
+
         return $chunks
             ->map(fn ($c) => ['chunk' => $c, 'similarity' => $c->cosineSimilarity($queryEmbedding)])
             ->filter(fn ($i) => $i['similarity'] >= $this->similarityThreshold)

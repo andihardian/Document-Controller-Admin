@@ -14,17 +14,32 @@ class EmbeddingService
     private string $openAiKey;
     private bool   $useSimpleEmbedding;
 
+    // Stopwords Bahasa Indonesia + Inggris untuk diabaikan saat embedding
+    private const STOPWORDS = [
+        // Indonesia
+        'yang', 'dan', 'di', 'ke', 'dari', 'ini', 'itu', 'dengan', 'untuk',
+        'pada', 'adalah', 'dalam', 'tidak', 'akan', 'oleh', 'juga', 'ada',
+        'telah', 'bisa', 'atau', 'sudah', 'dapat', 'serta', 'lebih', 'harus',
+        'nya', 'kami', 'kita', 'anda', 'saya', 'dia', 'mereka', 'hal', 'cara',
+        'bagi', 'sesuai', 'setiap', 'berdasarkan', 'tersebut', 'sebagai',
+        'bahwa', 'jika', 'maka', 'antara', 'seluruh', 'semua', 'pula',
+        // Inggris
+        'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
+        'of', 'with', 'by', 'from', 'is', 'are', 'was', 'were', 'be', 'been',
+        'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
+        'should', 'may', 'might', 'shall', 'can', 'this', 'that', 'these',
+        'those', 'it', 'its', 'we', 'you', 'he', 'she', 'they', 'not', 'all',
+    ];
+
     public function __construct()
     {
-        $this->chunkSize          = (int) config('ai.chunk_size', 500);
-        $this->chunkOverlap       = (int) config('ai.chunk_overlap', 50);
+        $this->chunkSize          = (int) config('ai.chunk_size', 400);
+        $this->chunkOverlap       = (int) config('ai.chunk_overlap', 80);
         $this->openAiKey          = config('services.openai.key', env('OPENAI_API_KEY', ''));
-
-        // Jika OpenAI key kosong → pakai simple TF-IDF style embedding
         $this->useSimpleEmbedding = empty($this->openAiKey);
 
         if ($this->useSimpleEmbedding) {
-            Log::warning('EmbeddingService: OPENAI_API_KEY kosong, menggunakan simple keyword embedding. Akurasi pencarian berkurang.');
+            Log::info('EmbeddingService: mode simple keyword embedding (tanpa OpenAI).');
         }
     }
 
@@ -134,10 +149,6 @@ class EmbeddingService
         return $this->openAiEmbedding($text);
     }
 
-    /**
-     * Embedding via OpenAI text-embedding-3-small.
-     * Digunakan jika OPENAI_API_KEY tersedia.
-     */
     private function openAiEmbedding(string $text): array
     {
         $model    = config('ai.embedding_model', 'text-embedding-3-small');
@@ -159,40 +170,64 @@ class EmbeddingService
     }
 
     /**
-     * Simple keyword-based embedding (TF-IDF style, 512 dimensi).
-     * Digunakan sebagai fallback jika OPENAI_API_KEY kosong.
-     * Akurasi lebih rendah dari OpenAI tapi tetap fungsional.
+     * Improved keyword embedding — TF-IDF style dengan:
+     * - Stopword removal (Indonesia + Inggris)
+     * - N-gram bigram untuk konteks frasa
+     * - Bobot berbeda untuk kata pendek vs panjang
+     * - Normalisasi L2
+     * Dimensi: 1024 (lebih besar = lebih sedikit collision)
      */
     private function simpleKeywordEmbedding(string $text): array
     {
-        $text   = mb_strtolower($text);
-        $words  = preg_split('/\s+/', $text, -1, PREG_SPLIT_NO_EMPTY);
-        $size   = 512;
+        $size   = 1024;
         $vector = array_fill(0, $size, 0.0);
 
-        foreach ($words as $word) {
-            // Hapus karakter non-alfanumerik
-            $word = preg_replace('/[^a-z0-9]/', '', $word);
-            if (strlen($word) < 2) continue;
+        // Normalisasi teks
+        $text  = mb_strtolower($text);
+        $text  = preg_replace('/[^a-z0-9\s]/u', ' ', $text);
+        $words = preg_split('/\s+/', trim($text), -1, PREG_SPLIT_NO_EMPTY);
 
-            // Hash word ke beberapa posisi di vector (hash trick)
-            $hash1 = crc32($word) % $size;
-            $hash2 = crc32('x' . $word) % $size;
-            $hash3 = crc32($word . 'z') % $size;
+        // Filter stopwords dan kata terlalu pendek
+        $filteredWords = array_values(array_filter($words, function ($word) {
+            return strlen($word) >= 2 && !in_array($word, self::STOPWORDS);
+        }));
 
-            $hash1 = abs($hash1);
-            $hash2 = abs($hash2);
-            $hash3 = abs($hash3);
+        if (empty($filteredWords)) {
+            return $vector;
+        }
 
-            $vector[$hash1] += 1.0;
-            $vector[$hash2] += 0.5;
-            $vector[$hash3] += 0.3;
+        // Hitung TF (term frequency)
+        $termFreq = array_count_values($filteredWords);
+        $maxFreq  = max($termFreq);
+
+        // Unigram embedding
+        foreach ($termFreq as $word => $freq) {
+            // Bobot: kata lebih panjang = lebih penting (informatif)
+            $lengthBonus = min(strlen($word) / 6.0, 1.5);
+            // Normalized TF
+            $tf = $freq / $maxFreq;
+            $weight = $tf * $lengthBonus;
+
+            // Hash ke beberapa posisi (hash trick)
+            foreach (['', '_a', '_b', '_c'] as $salt) {
+                $pos = abs(crc32($word . $salt)) % $size;
+                $vector[$pos] += $weight * (1.0 - (array_search($salt, ['', '_a', '_b', '_c']) * 0.2));
+            }
+        }
+
+        // Bigram embedding (frasa 2 kata berturut-turut)
+        for ($i = 0; $i < count($filteredWords) - 1; $i++) {
+            $bigram = $filteredWords[$i] . '_' . $filteredWords[$i + 1];
+            $pos1   = abs(crc32($bigram)) % $size;
+            $pos2   = abs(crc32('bi_' . $bigram)) % $size;
+            $vector[$pos1] += 0.8;
+            $vector[$pos2] += 0.4;
         }
 
         // Normalisasi L2
         $norm = sqrt(array_sum(array_map(fn($v) => $v ** 2, $vector)));
         if ($norm > 0) {
-            $vector = array_map(fn($v) => $v / $norm, $vector);
+            $vector = array_map(fn($v) => round($v / $norm, 6), $vector);
         }
 
         return $vector;
