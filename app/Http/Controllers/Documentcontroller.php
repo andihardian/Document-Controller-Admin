@@ -21,10 +21,12 @@ class DocumentController extends Controller
         $user  = auth()->user();
         $query = Document::with(['category', 'department', 'creator', 'currentVersion']);
 
+        // Employee hanya lihat dokumen departemen sendiri
         if ($user->hasRole('employee')) {
-            $query->where('created_by', $user->id);
+            $query->where('department_id', $user->department_id);
         }
 
+        // Department head hanya lihat departemennya
         if ($user->hasRole('department_head')) {
             $query->forDepartment($user->department_id);
         }
@@ -49,8 +51,16 @@ class DocumentController extends Controller
 
     public function create()
     {
-        $categories  = DocumentCategory::where('is_active', true)->get();
-        $departments = Department::where('is_active', true)->get();
+        $user       = auth()->user();
+        $categories = DocumentCategory::where('is_active', true)->get();
+
+        // Employee & department_head hanya bisa upload ke departemen sendiri
+        if ($user->hasRole('employee') || $user->hasRole('department_head')) {
+            $departments = Department::where('id', $user->department_id)->get();
+        } else {
+            $departments = Department::where('is_active', true)->get();
+        }
+
         return view('documents.create', compact('categories', 'departments'));
     }
 
@@ -82,7 +92,7 @@ class DocumentController extends Controller
                 'status'          => Document::STATUS_DRAFT,
                 'effective_date'  => $request->effective_date,
                 'expiry_date'     => $request->expiry_date,
-                'allow_ai_access' => true, // default aktifkan AI access
+                'allow_ai_access' => true,
             ]);
 
             $version = DocumentVersion::create([
@@ -97,7 +107,6 @@ class DocumentController extends Controller
                 'embedding_status' => 'pending',
             ]);
 
-            // Dispatch job untuk parsing + embedding PDF
             ProcessDocumentEmbedding::dispatch($version->id)
                 ->onQueue(config('ai.queue', 'default'));
 
@@ -231,7 +240,6 @@ class DocumentController extends Controller
                 'embedding_status' => 'pending',
             ]);
 
-            // Dispatch embedding untuk versi baru
             ProcessDocumentEmbedding::dispatch($version->id)
                 ->onQueue(config('ai.queue', 'default'));
 
@@ -305,8 +313,9 @@ class DocumentController extends Controller
             return;
         }
 
+        // Employee hanya bisa akses dokumen departemennya sendiri
         if ($user->hasRole('employee')) {
-            abort_if($document->created_by !== $user->id, 403);
+            abort_if($document->department_id !== $user->department_id, 403);
             return;
         }
 

@@ -17,7 +17,15 @@ class StoreDocumentRequest extends FormRequest
             'title'          => 'required|string|max:255',
             'description'    => 'nullable|string|max:1000',
             'category_id'    => 'required|exists:document_categories,id',
-            'department_id'  => 'required|exists:departments,id',
+            'department_id'  => ['required', 'exists:departments,id', function ($attr, $value, $fail) {
+                $user = auth()->user();
+                // Employee dan department_head hanya boleh upload ke departemen sendiri
+                if ($user->hasRole('employee') || $user->hasRole('department_head')) {
+                    if ((int) $value !== (int) $user->department_id) {
+                        $fail('Anda hanya dapat mengupload dokumen ke departemen Anda sendiri.');
+                    }
+                }
+            }],
             'document_file'  => 'required|file|mimes:pdf|max:10240',
             'effective_date' => 'nullable|date',
             'expiry_date'    => 'nullable|date|after_or_equal:effective_date',
