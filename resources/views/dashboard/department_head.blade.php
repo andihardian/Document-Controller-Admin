@@ -33,28 +33,28 @@
         @endphp
 
         @foreach($stats as $stat)
-        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow">
+        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 hover:shadow-md transition-shadow">
             <div class="w-10 h-10 rounded-xl bg-gradient-to-br {{ $stat['bg'] }} flex items-center justify-center mb-3 shadow-sm">
                 <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $stat['icon'] }}"/>
                 </svg>
             </div>
-            <p class="text-2xl font-bold text-gray-800 leading-none">{{ $stat['value'] }}</p>
-            <p class="text-sm font-medium text-gray-600 mt-0.5">{{ $stat['label'] }}</p>
-            <p class="text-xs text-gray-400">{{ $stat['sub'] }}</p>
+            <p class="text-2xl font-bold text-gray-800 dark:text-gray-100 leading-none">{{ $stat['value'] }}</p>
+            <p class="text-sm font-medium text-gray-600 dark:text-gray-400 mt-0.5">{{ $stat['label'] }}</p>
+            <p class="text-xs text-gray-400 dark:text-gray-500">{{ $stat['sub'] }}</p>
         </div>
         @endforeach
     </div>
 
     {{-- Pending Approval List --}}
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
             <div>
-                <h3 class="font-semibold text-gray-800">Dokumen Menunggu Persetujuan</h3>
-                <p class="text-xs text-gray-400 mt-0.5">Perlu ditinjau segera</p>
+                <h3 class="font-semibold text-gray-800 dark:text-gray-100">Dokumen Menunggu Persetujuan</h3>
+                <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Perlu ditinjau segera</p>
             </div>
             <a href="{{ route('approvals.index') }}"
-               class="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
+               class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium flex items-center gap-1">
                 Lihat semua
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -63,19 +63,19 @@
         </div>
 
         @forelse($pendingList as $doc)
-        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-50 hover:bg-gray-50 transition-colors last:border-0">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-50 dark:border-gray-800/60 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors last:border-0">
             <div class="flex items-center gap-3 min-w-0">
-                <div class="w-9 h-9 bg-amber-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <svg class="w-4.5 h-4.5 w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-9 h-9 bg-amber-50 dark:bg-amber-950/40 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5 text-amber-500 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                     </svg>
                 </div>
                 <div class="min-w-0">
-                    <p class="text-sm font-medium text-gray-800 truncate">{{ $doc->title }}</p>
-                    <p class="text-xs text-gray-400">
+                    <p class="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">{{ $doc->title }}</p>
+                    <p class="text-xs text-gray-400 dark:text-gray-500">
                         <span class="font-mono">{{ $doc->document_number }}</span>
                         · {{ $doc->category->name ?? '-' }}
-                        · Oleh <span class="font-medium text-gray-600">{{ $doc->creator->name ?? '-' }}</span>
+                        · Oleh <span class="font-medium text-gray-600 dark:text-gray-400">{{ $doc->creator->name ?? '-' }}</span>
                     </p>
                 </div>
             </div>
@@ -89,13 +89,13 @@
         </div>
         @empty
         <div class="py-12 text-center">
-            <div class="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
+            <div class="w-14 h-14 bg-emerald-50 dark:bg-emerald-950/40 rounded-2xl flex items-center justify-center mx-auto mb-3">
                 <svg class="w-7 h-7 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
             </div>
-            <p class="text-sm font-medium text-gray-600">Semua dokumen sudah diproses</p>
-            <p class="text-xs text-gray-400 mt-1">Tidak ada dokumen yang menunggu approval</p>
+            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Semua dokumen sudah diproses</p>
+            <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Tidak ada dokumen yang menunggu approval</p>
         </div>
         @endforelse
     </div>

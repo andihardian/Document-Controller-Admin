@@ -69,7 +69,7 @@
         @endphp
 
         @foreach($stats as $stat)
-        <div class="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
+        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 shadow-sm hover:shadow-md transition-shadow">
             <div class="flex items-start justify-between mb-4">
                 <div class="w-10 h-10 rounded-xl bg-gradient-to-br {{ $stat['bg'] }} flex items-center justify-center shadow-sm">
                     <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -77,9 +77,9 @@
                     </svg>
                 </div>
             </div>
-            <p class="text-3xl font-bold text-gray-800 leading-none mb-1">{{ $stat['value'] }}</p>
-            <p class="text-sm font-medium text-gray-600">{{ $stat['label'] }}</p>
-            <p class="text-xs text-gray-400 mt-0.5">{{ $stat['sub'] }}</p>
+            <p class="text-3xl font-bold text-gray-800 dark:text-gray-100 leading-none mb-1">{{ $stat['value'] }}</p>
+            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">{{ $stat['label'] }}</p>
+            <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{{ $stat['sub'] }}</p>
         </div>
         @endforeach
     </div>
@@ -88,10 +88,10 @@
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
         @php
         $statuses = [
-            ['label' => 'Approved',  'value' => $approvedDocs,     'dot' => 'bg-emerald-400', 'text' => 'text-emerald-700', 'bg' => 'bg-emerald-50 border-emerald-100'],
-            ['label' => 'Pending',   'value' => $pendingApprovals, 'dot' => 'bg-amber-400',   'text' => 'text-amber-700',   'bg' => 'bg-amber-50 border-amber-100'],
-            ['label' => 'Rejected',  'value' => $rejectedDocs,     'dot' => 'bg-red-400',     'text' => 'text-red-700',     'bg' => 'bg-red-50 border-red-100'],
-            ['label' => 'Expired',   'value' => $expiredDocs,      'dot' => 'bg-orange-400',  'text' => 'text-orange-700',  'bg' => 'bg-orange-50 border-orange-100'],
+            ['label' => 'Approved',  'value' => $approvedDocs,     'dot' => 'bg-emerald-400', 'text' => 'text-emerald-700 dark:text-emerald-400', 'bg' => 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-100 dark:border-emerald-900'],
+            ['label' => 'Pending',   'value' => $pendingApprovals, 'dot' => 'bg-amber-400',   'text' => 'text-amber-700 dark:text-amber-400',     'bg' => 'bg-amber-50 dark:bg-amber-950/40 border-amber-100 dark:border-amber-900'],
+            ['label' => 'Rejected',  'value' => $rejectedDocs,     'dot' => 'bg-red-400',     'text' => 'text-red-700 dark:text-red-400',         'bg' => 'bg-red-50 dark:bg-red-950/40 border-red-100 dark:border-red-900'],
+            ['label' => 'Expired',   'value' => $expiredDocs,      'dot' => 'bg-orange-400',  'text' => 'text-orange-700 dark:text-orange-400',   'bg' => 'bg-orange-50 dark:bg-orange-950/40 border-orange-100 dark:border-orange-900'],
         ];
         @endphp
         @foreach($statuses as $s)
@@ -109,10 +109,10 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
         {{-- Dokumen per Departemen --}}
-        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
             <div class="flex items-center justify-between mb-5">
-                <h3 class="font-semibold text-gray-800">Dokumen per Departemen</h3>
-                <a href="{{ route('departments.index') }}" class="text-xs text-blue-600 hover:underline">Kelola →</a>
+                <h3 class="font-semibold text-gray-800 dark:text-gray-100">Dokumen per Departemen</h3>
+                <a href="{{ route('departments.index') }}" class="text-xs text-blue-600 dark:text-blue-400 hover:underline">Kelola →</a>
             </div>
             <div class="space-y-3">
                 @forelse($docsByDepartment as $dept)
@@ -120,54 +120,54 @@
                 <div>
                     <div class="flex items-center justify-between mb-1">
                         <div class="flex items-center gap-2">
-                            <span class="text-xs font-mono font-semibold bg-slate-100 text-slate-600 px-2 py-0.5 rounded">{{ $dept->code }}</span>
-                            <span class="text-sm text-gray-700">{{ $dept->name }}</span>
+                            <span class="text-xs font-mono font-semibold bg-slate-100 dark:bg-gray-800 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded">{{ $dept->code }}</span>
+                            <span class="text-sm text-gray-700 dark:text-gray-300">{{ $dept->name }}</span>
                         </div>
-                        <span class="text-sm font-bold text-gray-800">{{ $dept->documents_count }}</span>
+                        <span class="text-sm font-bold text-gray-800 dark:text-gray-200">{{ $dept->documents_count }}</span>
                     </div>
-                    <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div class="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                         <div class="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all"
                              style="width: {{ $dept->documents_count / $max * 100 }}%"></div>
                     </div>
                 </div>
                 @empty
-                <p class="text-sm text-gray-400 text-center py-6">Belum ada data departemen</p>
+                <p class="text-sm text-gray-400 dark:text-gray-500 text-center py-6">Belum ada data departemen</p>
                 @endforelse
             </div>
         </div>
 
         {{-- Aktivitas Terbaru --}}
-        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
             <div class="flex items-center justify-between mb-5">
-                <h3 class="font-semibold text-gray-800">Aktivitas Terbaru</h3>
-                <a href="{{ route('audit-logs.index') }}" class="text-xs text-blue-600 hover:underline">Lihat semua →</a>
+                <h3 class="font-semibold text-gray-800 dark:text-gray-100">Aktivitas Terbaru</h3>
+                <a href="{{ route('audit-logs.index') }}" class="text-xs text-blue-600 dark:text-blue-400 hover:underline">Lihat semua →</a>
             </div>
             <div class="space-y-3">
                 @forelse($recentLogs as $log)
                 @php
                 $actionColors = [
-                    'upload'   => 'bg-blue-100 text-blue-600',
-                    'approve'  => 'bg-emerald-100 text-emerald-600',
-                    'reject'   => 'bg-red-100 text-red-600',
-                    'submit'   => 'bg-amber-100 text-amber-600',
-                    'login'    => 'bg-slate-100 text-slate-500',
-                    'create'   => 'bg-indigo-100 text-indigo-600',
-                    'delete'   => 'bg-red-100 text-red-600',
-                    'download' => 'bg-cyan-100 text-cyan-600',
+                    'upload'   => 'bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400',
+                    'approve'  => 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400',
+                    'reject'   => 'bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400',
+                    'submit'   => 'bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400',
+                    'login'    => 'bg-slate-100 dark:bg-gray-800 text-slate-500 dark:text-slate-400',
+                    'create'   => 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400',
+                    'delete'   => 'bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400',
+                    'download' => 'bg-cyan-100 dark:bg-cyan-950/60 text-cyan-600 dark:text-cyan-400',
                 ];
-                $ac = $actionColors[$log->action] ?? 'bg-gray-100 text-gray-500';
+                $ac = $actionColors[$log->action] ?? 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400';
                 @endphp
                 <div class="flex items-start gap-3">
                     <div class="w-8 h-8 rounded-lg {{ $ac }} flex items-center justify-center flex-shrink-0 text-xs font-bold">
                         {{ strtoupper(substr($log->action, 0, 2)) }}
                     </div>
                     <div class="flex-1 min-w-0">
-                        <p class="text-sm text-gray-700 truncate">{{ $log->description }}</p>
-                        <p class="text-xs text-gray-400 mt-0.5">{{ $log->created_at->diffForHumans() }} · {{ $log->user->name ?? 'System' }}</p>
+                        <p class="text-sm text-gray-700 dark:text-gray-300 truncate">{{ $log->description }}</p>
+                        <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{{ $log->created_at->diffForHumans() }} · {{ $log->user->name ?? 'System' }}</p>
                     </div>
                 </div>
                 @empty
-                <p class="text-sm text-gray-400 text-center py-6">Belum ada aktivitas</p>
+                <p class="text-sm text-gray-400 dark:text-gray-500 text-center py-6">Belum ada aktivitas</p>
                 @endforelse
             </div>
         </div>
@@ -185,13 +185,13 @@
         @endphp
         @foreach($links as $link)
         <a href="{{ route($link['route']) }}"
-           class="bg-white border border-gray-100 rounded-2xl p-4 flex items-center gap-3 shadow-sm hover:shadow-md hover:border-{{ $link['color'] }}-200 transition-all group">
-            <div class="w-9 h-9 bg-{{ $link['color'] }}-50 rounded-xl flex items-center justify-center group-hover:bg-{{ $link['color'] }}-100 transition-colors">
-                <svg class="w-4.5 h-4.5 w-5 h-5 text-{{ $link['color'] }}-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+           class="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 flex items-center gap-3 shadow-sm hover:shadow-md transition-all group">
+            <div class="w-9 h-9 bg-{{ $link['color'] }}-50 dark:bg-{{ $link['color'] }}-950/40 rounded-xl flex items-center justify-center transition-colors">
+                <svg class="w-5 h-5 text-{{ $link['color'] }}-500 dark:text-{{ $link['color'] }}-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $link['icon'] }}"/>
                 </svg>
             </div>
-            <span class="text-sm font-medium text-gray-700 group-hover:text-gray-900">{{ $link['label'] }}</span>
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white">{{ $link['label'] }}</span>
         </a>
         @endforeach
     </div>

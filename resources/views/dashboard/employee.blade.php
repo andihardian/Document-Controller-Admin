@@ -33,26 +33,26 @@
         @endphp
 
         @foreach($stats as $stat)
-        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow">
+        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 hover:shadow-md transition-shadow">
             <div class="w-2 h-2 rounded-full bg-gradient-to-r {{ $stat['bg'] }} mb-3"></div>
-            <p class="text-2xl font-bold text-gray-800 leading-none">{{ $stat['value'] }}</p>
-            <p class="text-sm font-medium text-gray-600 mt-0.5">{{ $stat['label'] }}</p>
-            <p class="text-xs text-gray-400">{{ $stat['sub'] }}</p>
+            <p class="text-2xl font-bold text-gray-800 dark:text-gray-100 leading-none">{{ $stat['value'] }}</p>
+            <p class="text-sm font-medium text-gray-600 dark:text-gray-400 mt-0.5">{{ $stat['label'] }}</p>
+            <p class="text-xs text-gray-400 dark:text-gray-500">{{ $stat['sub'] }}</p>
         </div>
         @endforeach
     </div>
 
     {{-- Rejected alert --}}
     @if($rejectedDocs > 0)
-    <div class="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-center gap-3">
-        <div class="w-9 h-9 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
-            <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div class="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-2xl p-4 flex items-center gap-3">
+        <div class="w-9 h-9 bg-red-100 dark:bg-red-900/60 rounded-xl flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5 text-red-500 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
         </div>
         <div class="flex-1">
-            <p class="text-sm font-medium text-red-800">{{ $rejectedDocs }} dokumen ditolak dan perlu direvisi</p>
-            <p class="text-xs text-red-600 mt-0.5">Buka detail dokumen untuk melihat alasan penolakan dan upload revisi</p>
+            <p class="text-sm font-medium text-red-800 dark:text-red-300">{{ $rejectedDocs }} dokumen ditolak dan perlu direvisi</p>
+            <p class="text-xs text-red-600 dark:text-red-400 mt-0.5">Buka detail dokumen untuk melihat alasan penolakan dan upload revisi</p>
         </div>
         <a href="{{ route('documents.index', ['status' => 'rejected']) }}"
            class="text-xs bg-red-600 text-white font-medium px-3 py-1.5 rounded-lg hover:bg-red-700 transition-colors flex-shrink-0">
@@ -62,14 +62,14 @@
     @endif
 
     {{-- Recent documents --}}
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
             <div>
-                <h3 class="font-semibold text-gray-800">Dokumen Terbaru Saya</h3>
-                <p class="text-xs text-gray-400 mt-0.5">Aktivitas dokumen Anda</p>
+                <h3 class="font-semibold text-gray-800 dark:text-gray-100">Dokumen Terbaru Saya</h3>
+                <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Aktivitas dokumen Anda</p>
             </div>
             <a href="{{ route('documents.index') }}"
-               class="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
+               class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium flex items-center gap-1">
                 Lihat semua
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -78,25 +78,25 @@
         </div>
 
         @forelse($recentDocs as $doc)
-        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-50 hover:bg-gray-50 transition-colors last:border-0">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-50 dark:border-gray-800/60 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors last:border-0">
             <div class="flex items-center gap-3 min-w-0">
                 <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0
-                    @if($doc->status === 'approved') bg-emerald-50
-                    @elseif($doc->status === 'pending_approval') bg-amber-50
-                    @elseif($doc->status === 'rejected') bg-red-50
-                    @else bg-gray-100 @endif">
-                    <svg class="w-4.5 h-4.5 w-5 h-5
-                        @if($doc->status === 'approved') text-emerald-500
-                        @elseif($doc->status === 'pending_approval') text-amber-500
-                        @elseif($doc->status === 'rejected') text-red-500
-                        @else text-gray-400 @endif"
+                    @if($doc->status === 'approved') bg-emerald-50 dark:bg-emerald-950/40
+                    @elseif($doc->status === 'pending_approval') bg-amber-50 dark:bg-amber-950/40
+                    @elseif($doc->status === 'rejected') bg-red-50 dark:bg-red-950/40
+                    @else bg-gray-100 dark:bg-gray-800 @endif">
+                    <svg class="w-5 h-5
+                        @if($doc->status === 'approved') text-emerald-500 dark:text-emerald-400
+                        @elseif($doc->status === 'pending_approval') text-amber-500 dark:text-amber-400
+                        @elseif($doc->status === 'rejected') text-red-500 dark:text-red-400
+                        @else text-gray-400 dark:text-gray-500 @endif"
                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                     </svg>
                 </div>
                 <div class="min-w-0">
-                    <p class="text-sm font-medium text-gray-800 truncate">{{ $doc->title }}</p>
-                    <p class="text-xs text-gray-400">
+                    <p class="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">{{ $doc->title }}</p>
+                    <p class="text-xs text-gray-400 dark:text-gray-500">
                         <span class="font-mono">{{ $doc->document_number }}</span>
                         · {{ $doc->category->name ?? '-' }}
                         · {{ $doc->created_at->format('d M Y') }}
@@ -105,14 +105,14 @@
             </div>
             <div class="flex items-center gap-2 ml-3 flex-shrink-0">
                 <span class="text-xs font-medium px-2.5 py-1 rounded-full
-                    @if($doc->status === 'approved') bg-emerald-100 text-emerald-700
-                    @elseif($doc->status === 'pending_approval') bg-amber-100 text-amber-700
-                    @elseif($doc->status === 'rejected') bg-red-100 text-red-700
-                    @else bg-gray-100 text-gray-600 @endif">
+                    @if($doc->status === 'approved') bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400
+                    @elseif($doc->status === 'pending_approval') bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400
+                    @elseif($doc->status === 'rejected') bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-400
+                    @else bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 @endif">
                     {{ $doc->status_label }}
                 </span>
                 <a href="{{ route('documents.show', $doc) }}"
-                   class="text-gray-300 hover:text-gray-500 transition-colors">
+                   class="text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                     </svg>
@@ -121,13 +121,13 @@
         </div>
         @empty
         <div class="py-14 text-center">
-            <div class="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
+            <div class="w-14 h-14 bg-blue-50 dark:bg-blue-950/40 rounded-2xl flex items-center justify-center mx-auto mb-3">
                 <svg class="w-7 h-7 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                 </svg>
             </div>
-            <p class="text-sm font-medium text-gray-600">Belum ada dokumen</p>
-            <p class="text-xs text-gray-400 mt-1 mb-4">Upload dokumen pertama Anda sekarang</p>
+            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Belum ada dokumen</p>
+            <p class="text-xs text-gray-400 dark:text-gray-500 mt-1 mb-4">Upload dokumen pertama Anda sekarang</p>
             <a href="{{ route('documents.create') }}"
                class="inline-flex items-center gap-2 bg-blue-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
