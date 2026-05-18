@@ -131,6 +131,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
             'documents/{document}/force-delete',
             [DocumentController::class, 'forceDelete']
         )->name('documents.force-delete');
+
+        Route::delete(
+            'documents/bulk-delete',
+            [DocumentController::class, 'bulkDelete']
+        )->name('documents.bulk-delete');
     });
 });
 

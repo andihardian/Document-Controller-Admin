@@ -291,6 +291,8 @@ class DocumentController extends Controller
 
     public function forceDelete(Document $document)
     {
+        abort_unless(auth()->user()->hasRole('admin'), 403);
+
         AuditLog::record('delete', 'documents',
             "Hapus permanen: {$document->document_number}",
             $document->id, Document::class
@@ -300,6 +302,35 @@ class DocumentController extends Controller
 
         return redirect()->route('documents.index')
             ->with('success', 'Dokumen berhasil dihapus permanen.');
+    }
+
+    /**
+     * Hapus banyak dokumen sekaligus (admin only).
+     */
+    public function bulkDelete(Request $request)
+    {
+        abort_unless(auth()->user()->hasRole('admin'), 403);
+
+        $request->validate([
+            'ids'   => 'required|array|min:1',
+            'ids.*' => 'integer|exists:documents,id',
+        ]);
+
+        $documents = Document::whereIn('id', $request->ids)->get();
+        $count     = $documents->count();
+
+        DB::transaction(function () use ($documents) {
+            foreach ($documents as $document) {
+                AuditLog::record('delete', 'documents',
+                    "Hapus permanen (bulk): {$document->document_number}",
+                    $document->id, Document::class
+                );
+                $document->forceDelete();
+            }
+        });
+
+        return redirect()->route('documents.index')
+            ->with('success', "{$count} dokumen berhasil dihapus permanen.");
     }
 
     private function authorizeDocumentAccess(Document $document): void
