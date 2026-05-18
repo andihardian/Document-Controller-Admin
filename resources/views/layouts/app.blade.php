@@ -136,6 +136,23 @@
                 </svg>
                 Audit Log
             </a>
+
+            {{-- Sistem section label --}}
+            <div class="pt-4 pb-2">
+                <p class="px-3 text-xs font-semibold text-slate-500 uppercase tracking-widest">Sistem</p>
+            </div>
+
+            {{-- Backup & Restore --}}
+            <a href="{{ route('backup.index') }}"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
+                      {{ request()->routeIs('backup.*') ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:bg-slate-800 hover:text-white dark:hover:bg-gray-800' }}">
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M4 7v10c0 2.21 3.582 3 8 3s8-.79 8-3V7M4 7c0 2.21 3.582 3 8 3s8-2.79 8-3M4 7c0-2.21 3.582-3 8-3s8 .79 8 3"/>
+                </svg>
+                Backup & Restore
+            </a>
+
             @endrole
 
         </nav>

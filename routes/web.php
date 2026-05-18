@@ -3,6 +3,7 @@
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AiChatController;
 use App\Http\Controllers\AuditLogController;
+use App\Http\Controllers\BackupController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\DocumentCategoryController;
@@ -12,7 +13,6 @@ use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 // ─── Public ───────────────────────────────────────────────
-// Landing page
 Route::get('/', fn() => view('welcome'))->name('home');
 
 // ─── Authenticated ────────────────────────────────────────
@@ -47,58 +47,32 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // ─── AI Assistant ─────────────────────────────────────
     Route::prefix('ai')->name('ai.')->group(function () {
 
-        // Halaman utama AI
-        Route::get('/', [AiChatController::class, 'index'])
-            ->name('index');
+        Route::get('/', [AiChatController::class, 'index'])->name('index');
 
-        // AI dengan konteks dokumen
-        Route::get(
-            '/documents/{document}',
-            [AiChatController::class, 'documentContext']
-        )->name('document-context');
+        Route::get('/documents/{document}', [AiChatController::class, 'documentContext'])
+            ->name('document-context');
 
-        // ── Chat Session ──────────────────────────────────
-        Route::post('/chats', [AiChatController::class, 'createChat'])
-            ->name('chats.create');
+        Route::post('/chats', [AiChatController::class, 'createChat'])->name('chats.create');
+        Route::get('/chats/{chat}', [AiChatController::class, 'showChat'])->name('chats.show');
+        Route::delete('/chats/{chat}', [AiChatController::class, 'deleteChat'])->name('chats.delete');
 
-        Route::get('/chats/{chat}', [AiChatController::class, 'showChat'])
-            ->name('chats.show');
+        Route::post('/chats/{chat}/messages', [AiChatController::class, 'sendMessage'])
+            ->name('chats.messages.send');
 
-        Route::delete('/chats/{chat}', [AiChatController::class, 'deleteChat'])
-            ->name('chats.delete');
+        Route::post('/documents/{document}/summarize', [AiChatController::class, 'summarize'])
+            ->name('documents.summarize');
 
-        // ── Messages ──────────────────────────────────────
-        Route::post(
-            '/chats/{chat}/messages',
-            [AiChatController::class, 'sendMessage']
-        )->name('chats.messages.send');
-
-        // ── Document AI Features ──────────────────────────
-        Route::post(
-            '/documents/{document}/summarize',
-            [AiChatController::class, 'summarize']
-        )->name('documents.summarize');
-
-        Route::post(
-            '/documents/{document}/compare-versions',
-            [AiChatController::class, 'compareVersions']
-        )->name('documents.compare-versions');
+        Route::post('/documents/{document}/compare-versions', [AiChatController::class, 'compareVersions'])
+            ->name('documents.compare-versions');
     });
 
     // ─── Approvals ────────────────────────────────────────
     Route::middleware('role:admin|department_head')->group(function () {
 
-        Route::get('/approvals', [ApprovalController::class, 'index'])
-            ->name('approvals.index');
-
-        Route::get('/approvals/{documentVersion}', [ApprovalController::class, 'show'])
-            ->name('approvals.show');
-
-        Route::post('/approvals/{documentVersion}/approve', [ApprovalController::class, 'approve'])
-            ->name('approvals.approve');
-
-        Route::post('/approvals/{documentVersion}/reject', [ApprovalController::class, 'reject'])
-            ->name('approvals.reject');
+        Route::get('/approvals', [ApprovalController::class, 'index'])->name('approvals.index');
+        Route::get('/approvals/{documentVersion}', [ApprovalController::class, 'show'])->name('approvals.show');
+        Route::post('/approvals/{documentVersion}/approve', [ApprovalController::class, 'approve'])->name('approvals.approve');
+        Route::post('/approvals/{documentVersion}/reject', [ApprovalController::class, 'reject'])->name('approvals.reject');
     });
 
     // ─── Admin only ───────────────────────────────────────
@@ -106,36 +80,32 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::resource('users', UserController::class);
 
-        Route::patch(
-            'users/{user}/toggle-status',
-            [UserController::class, 'toggleStatus']
-        )->name('users.toggle-status');
+        Route::patch('users/{user}/toggle-status', [UserController::class, 'toggleStatus'])
+            ->name('users.toggle-status');
 
-        Route::patch(
-            'users/{user}/reset-password',
-            [UserController::class, 'resetPassword']
-        )->name('users.reset-password');
+        Route::patch('users/{user}/reset-password', [UserController::class, 'resetPassword'])
+            ->name('users.reset-password');
 
         Route::resource('departments', DepartmentController::class);
         Route::resource('categories', DocumentCategoryController::class);
 
-        Route::get('/audit-logs', [AuditLogController::class, 'index'])
-            ->name('audit-logs.index');
+        Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
 
-        Route::patch(
-            'documents/{id}/restore',
-            [DocumentController::class, 'restore']
-        )->name('documents.restore');
+        Route::patch('documents/{id}/restore', [DocumentController::class, 'restore'])
+            ->name('documents.restore');
 
-        Route::delete(
-            'documents/{document}/force-delete',
-            [DocumentController::class, 'forceDelete']
-        )->name('documents.force-delete');
+        Route::delete('documents/{document}/force-delete', [DocumentController::class, 'forceDelete'])
+            ->name('documents.force-delete');
 
-        Route::delete(
-            'documents/bulk-delete',
-            [DocumentController::class, 'bulkDelete']
-        )->name('documents.bulk-delete');
+        Route::delete('documents/bulk-delete', [DocumentController::class, 'bulkDelete'])
+            ->name('documents.bulk-delete');
+
+        // ─── Backup ───────────────────────────────────────
+        Route::get('/backup', [BackupController::class, 'index'])->name('backup.index');
+        Route::post('/backup/run', [BackupController::class, 'run'])->name('backup.run');
+        Route::post('/backup/download', [BackupController::class, 'download'])->name('backup.download');
+        Route::delete('/backup/delete', [BackupController::class, 'delete'])->name('backup.delete');
+        Route::post('/backup/restore', [BackupController::class, 'restore'])->name('backup.restore'); // ← ADDED
     });
 });
 
